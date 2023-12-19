@@ -41,8 +41,7 @@ class ActorNetSimple(nn.Module):
         h_clone = h.clone()
         # map to valid action space: {steer:[-1, 1], gas:[0, 1], brake:[0, 1]}
         h_clone[:, 0] = (h_clone[:, 0])
-        h_clone[:, 1] = (h_clone[:, 1]+1) * 0.5 + 0.1
-        h_clone[:, 2] = (h_clone[:, 2]+1) * brake_rate
+        h_clone[:, 1] = (h_clone[:, 1]) 
         
         return h_clone
     

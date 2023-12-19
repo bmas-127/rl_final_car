@@ -182,11 +182,11 @@ def train(agent):
     while True:
         # Get the observation
         obs, terminal = get_observation()
-        print(obs.shape)
         
 
         # Decide an action based on the observation (Replace this with your RL agent logic)
         action_to_take = agent.decide_agent_actions(obs)  # Replace with actual action
+        print(action_to_take.shape)
         print(action_to_take)
         # Send an action and receive new observation, reward, and done status
         terminal = set_action(action_to_take)

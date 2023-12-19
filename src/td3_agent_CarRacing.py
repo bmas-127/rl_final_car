@@ -11,9 +11,9 @@ class CarRacingTD3Agent(TD3BaseAgent):
     def __init__(self, config):
         super(CarRacingTD3Agent, self).__init__(config)
         # initialize environment
-        self.observation_space = (128, 128)
-        self.action_space = (2)
-
+        self.observation_space = 128
+        self.action_space = 2
+        
         # behavior network
         #print("self.env.observation_space.shape[0]:", self.env.observation_space.shape[0])
         self.actor_net = ActorNetSimple(self.observation_space, self.action_space, 3)
@@ -50,7 +50,7 @@ class CarRacingTD3Agent(TD3BaseAgent):
         # noise_mean = np.full(self.env.action_space.shape[0], 0.0, np.float32)
         # noise_std = np.full(self.env.action_space.shape[0], 2.0, np.float32)
         # self.noise = OUNoiseGenerator(noise_mean, noise_std)
-        self.noise = GaussianNoise(self.action_space.shape[0], 0.0, 2.0)
+        self.noise = GaussianNoise(self.action_space, 0.0, 2.0)
 
 
     def decide_agent_actions(self, state, sigma=0.0, brake_rate=0.015): 
@@ -64,7 +64,7 @@ class CarRacingTD3Agent(TD3BaseAgent):
             
             print(action)
             action[0, 0] = np.clip(action[0, 0], -1.0, 1.0)  
-            action[0, 1] = np.clip(action[0, 1], 0.0, 1.0)   
+            action[0, 1] = np.clip(action[0, 1], -1.0, 1.0)   
 
             action = action[0] 
         
@@ -94,8 +94,7 @@ class CarRacingTD3Agent(TD3BaseAgent):
             # Adding noise and ensuring the action + noise is still within the valid action space
             a_next = a_next + noise 
             a_next[0, 0] = np.clip(a_next[0, 0], -1.0, 1.0)  # First action: -1 to +1
-            a_next[0, 1] = np.clip(a_next[0, 1], 0.0, 1.0)   # Second action: 0 to +1
-            a_next[0, 2] = np.clip(a_next[0, 2], 0.0, 1.0)   # Third action: 0 to +1
+            action[0, 1] = np.clip(action[0, 1], -1.0, 1.0)   
             
             a_next = torch.from_numpy(a_next).float().to(self.device)
 
