@@ -19,9 +19,13 @@ import gymnasium as gym
 # accu_time needed to be added
 # ****************************
 class Env():
-    def __init__(self, scenario, output_freq):
+    def __init__(self, scenario, render_mode, reset_when_collision, output_freq):
         self.MAX_ACCU_TIME = -1
         self.output_freq = config["output_freq"]
+        
+        self.env = RaceEnv(scenario=scenario,
+                  render_mode=render_mode,
+                  reset_when_collision=True if 'austria' in scenario else False)
         
         scenario = config["scenario"]
         if 'austria' in scenario:
@@ -33,20 +37,23 @@ class Env():
         self.output_freq = output_freq
         
     def reset(self):
+        obs, info = self.env.reset()
         self.images = []
         self.step = 0
         self.accu_time = 0
+        
+        return obs, info
     
-    def get_img_views(self, env, obs, info):
+    def get_img_views(self, obs, info):
         progress = info['progress']
         lap = int(info['lap'])
         score = lap + progress - 1.
 
         # Get the images
-        img1 = env.env.force_render(render_mode='rgb_array_higher_birds_eye', width=540, height=540,
+        img1 = self.env.env.force_render(render_mode='rgb_array_higher_birds_eye', width=540, height=540,
                                     position=np.array([4.89, -9.30, -3.42]), fov=120)
-        img2 = env.env.force_render(render_mode='rgb_array_birds_eye', width=270, height=270)
-        img3 = env.env.force_render(render_mode='rgb_array_follow', width=128, height=128)
+        img2 = self.env.env.force_render(render_mode='rgb_array_birds_eye', width=270, height=270)
+        img3 = self.env.env.force_render(render_mode='rgb_array_follow', width=128, height=128)
         img4 = (obs.transpose((1, 2, 0))).astype(np.uint8)
 
         # Combine the images
@@ -87,10 +94,19 @@ class Env():
 
 
 
-    def set_action(self, action, env):
+    def set_action(self, action):
         self.step += 1
-        obs, _, terminal, trunc, info = env.step(action)
+        obs, reward, terminal, trunc, info = self.env.step(action)
 
+        self.output_info(info, obs)
+        print(reward)
+
+        if terminal:
+            self.output_video(info)
+
+        return obs, reward, terminal, trunc, info
+
+    def output_info(self, info, obs):        
         progress = info['progress']
         print(info["progress"])
         lap = int(info['lap'])
@@ -114,25 +130,21 @@ class Env():
         # plt.show()
 
         if self.step % self.output_freq == 0:
-            img = self.get_img_views(env, obs, info)
+            img = self.get_img_views(obs, info)
             # plt.imshow(img)
             # plt.show()
             self.images.append(img)
-            
-
-        if terminal:
-            # if round(accu_time) > self.MAX_ACCU_TIME:
-            #     print(f'[Time Limit Error] Accu time "{accu_time}" violate the limit {self.MAX_ACCU_TIME} (sec)!')
-            cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
-            video_name = f'results/tester_{cur_time}_env{env_time:.3f}_acc{round(0)}s_score{score:.4f}.mp4'
-            Path(video_name).parent.mkdir(parents=True, exist_ok=True)
-            self.record_video(video_name)
-            print(f'============ Terminal ============')
-            print(f'Video saved to {video_name}!')
-            print(f'===================================')
-
-        return terminal
-
+    
+    def output_video(self, info):
+        # if round(accu_time) > self.MAX_ACCU_TIME:
+        #     print(f'[Time Limit Error] Accu time "{accu_time}" violate the limit {self.MAX_ACCU_TIME} (sec)!')
+        cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
+        video_name = f'results/tester_{cur_time}_env{info["time"]:.3f}_acc{round(0)}s_score{(int(info["lap"])+info["progress"]-1):.4f}.mp4'
+        Path(video_name).parent.mkdir(parents=True, exist_ok=True)
+        self.record_video(video_name)
+        print(f'============ Terminal ============')
+        print(f'Video saved to {video_name}!')
+        print(f'===================================')
 
 
 
@@ -140,13 +152,16 @@ class Env():
 class RandomAgent:
     def __init__(self, config):
         self.scenario = config["scenario"]
-        self.ENV = Env(scenario=self.scenario, output_freq=config["output_freq"])
+        self.env = Env(scenario=self.scenario,
+                  render_mode='rgb_array_birds_eye',
+                  reset_when_collision=True if 'austria' in self.scenario else False,
+                  output_freq=config["output_freq"])
 
         
         self.action_space = gym.spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32)
-        self.env = RaceEnv(scenario=self.scenario,
-                  render_mode='rgb_array_birds_eye',
-                  reset_when_collision=True if 'austria' in self.scenario else False)
+        # self.env = RaceEnv(scenario=self.scenario,
+        #           render_mode='rgb_array_birds_eye',
+        #           reset_when_collision=True if 'austria' in self.scenario else False)
         
     def act(self, observation):
         return self.action_space.sample()
@@ -161,7 +176,7 @@ class RandomAgent:
             print(action_to_take.shape)
             print(action_to_take)
             # Send an action and receive new observation, reward, and done status
-            terminal = self.ENV.set_action(action_to_take, self.env)
+            obs, reward, terminal, trunc, info = self.env.set_action(action_to_take)
 
 
             if terminal:
