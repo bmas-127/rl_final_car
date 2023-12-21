@@ -5,14 +5,18 @@ from src.base_agent import TD3BaseAgent
 from src.models.CarRacing_model import ActorNetSimple, CriticNetSimple
 import random
 from src.base_agent import OUNoiseGenerator, GaussianNoise
+from racecar_gym.env import RaceEnv
 import gymnasium as gym
 
 class CarRacingTD3Agent(TD3BaseAgent):
     def __init__(self, config):
         super(CarRacingTD3Agent, self).__init__(config)
+    
         # initialize environment
         self.observation_space = 128
         self.action_space = 2
+        self.action_sample = gym.spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32)
+
         
         # behavior network
         #print("self.env.observation_space.shape[0]:", self.env.observation_space.shape[0])

@@ -98,17 +98,17 @@ class TD3BaseAgent(ABC):
     def train(self):
         for episode in range(self.total_episode):
             total_reward = 0
-            state, infos = self.env.reset()
+            state, infos = env.reset()
             self.noise.reset()
             for t in range(10000):
                 if self.total_time_step < self.warmup_steps:
-                    action = self.env.action_space.sample()
+                    action = self.action_sample.sample()
                 else:
                     # exploration degree
                     sigma = max(0.1*(1-episode/self.total_episode), 0.01)
                     action = self.decide_agent_actions(state, sigma=sigma)
 
-                next_state, reward, terminates, truncates, _ = self.env.step(action)
+                next_state, reward, terminates, truncates, _ = env.step(action)
                 self.replay_buffer.append(state, action, [reward/10], next_state, [int(terminates)])
                 if self.total_time_step >= self.warmup_steps:
                     self.update()
@@ -136,10 +136,10 @@ class TD3BaseAgent(ABC):
         all_rewards = []
         for episode in range(self.eval_episode):
             total_reward = 0
-            state, infos = self.test_env.reset()
+            state, infos = test_env.reset()
             for t in range(10000):
                 action = self.decide_agent_actions(state)
-                next_state, reward, terminates, truncates, _ = self.test_env.step(action)
+                next_state, reward, terminates, truncates, _ = test_env.step(action)
                 total_reward += reward
                 state = next_state
                 if terminates or truncates:

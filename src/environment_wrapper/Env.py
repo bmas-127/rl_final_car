@@ -11,6 +11,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from racecar_gym.env import RaceEnv
+import gymnasium as gym
 
 #
 SERVER_RAISE_EXCEPTION = True
@@ -35,8 +36,8 @@ last_get_obs_time: Optional[float] = None
 end_time: Optional[float] = None
 
 
-def get_img_views():
-    global obs, sid, info, env
+def get_img_views(env):
+    global obs, sid, info
 
     progress = info['progress']
     lap = int(info['lap'])
@@ -103,14 +104,13 @@ def get_observation():
         return jsonify({'error': str(e)})
 
 
-def set_action(action):
+def set_action(action, env):
     try:
         global obs, reward, terminal, trunc, info, step, output_freq, sid, accu_time
 
         if terminal:
             return jsonify({'terminal': terminal})
 
-        accu_time += time.time() - last_get_obs_time
 
         step += 1
         obs, _, terminal, trunc, info = env.step(action)
@@ -123,8 +123,7 @@ def set_action(action):
         # Print information
         print_info = f'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Step: {step} Lap: {info["lap"]}, ' \
                      f'Progress: {info["progress"]:.3f}, ' \
-                     f'EnvTime: {info["time"]:.3f} ' \
-                     f'AccTime: {accu_time:.3f} '
+                     f'EnvTime: {info["time"]:.3f} ' 
         if info.get('n_collision') is not None:
             print_info += f'Collision: {info["n_collision"]} '
         if info.get('collision_penalties') is not None:
@@ -138,7 +137,7 @@ def set_action(action):
         # plt.show()
 
         if step % output_freq == 0:
-            img = get_img_views()
+            img = get_img_views(env)
             # plt.imshow(img)
             # plt.show()
             images.append(img)
@@ -175,51 +174,41 @@ def get_args():
         MAX_ACCU_TIME = 600
 
 
-def train(agent):
-    while True:
-        # Get the observation
-        obs, terminal = get_observation()
-        
-
-        # Decide an action based on the observation (Replace this with your RL agent logic)
-        # action_to_take = agent.decide_agent_actions(obs)  # Replace with actual action
-        action_to_take = agent.act(obs)
-        print(action_to_take.shape)
-        print(action_to_take)
-        # Send an action and receive new observation, reward, and done status
-        terminal = set_action(action_to_take)
 
 
-        if terminal:
-            print('Episode finished.')
-            return
+
+class RandomAgent:
+    def __init__(self):
+        self.action_space = gym.spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32)
+        self.env = RaceEnv(scenario=scenario,
+                  render_mode='rgb_array_birds_eye',
+                  reset_when_collision=True if 'austria' in scenario else False)
+
+    def act(self, observation):
+        return self.action_space.sample()
+    
+    def train(self):
+        obs, info = self.env.reset()
+        while True:
+
+            # Decide an action based on the observation (Replace this with your RL agent logic)
+            # action_to_take = agent.decide_agent_actions(obs)  # Replace with actual action
+            action_to_take = self.act(obs)
+            print(action_to_take.shape)
+            print(action_to_take)
+            # Send an action and receive new observation, reward, and done status
+            terminal = set_action(action_to_take, self.env)
+
+
+            if terminal:
+                print('Episode finished.')
+                return
+
 
 if __name__ == '__main__':
     get_args()
 
     # train env
-    env = RaceEnv(scenario=scenario,
-                  render_mode='rgb_array_birds_eye',
-                  reset_when_collision=True if 'austria' in scenario else False)
-    obs, info = env.reset()
-    
-    # test env
-    test_env = RaceEnv(scenario=scenario,
-                    render_mode='rgb_array_birds_eye',
-                    reset_when_collision=True if 'austria' in scenario else False)
-    
-    
-    
-    class RandomAgent:
-        def __init__(self, action_space):
-            self.action_space = action_space
-
-        def act(self, observation):
-            return self.action_space.sample()
-
-
-    # Initialize the RL Agent
-    import gymnasium as gym
 
     config = {
         "gpu": True,
@@ -239,7 +228,6 @@ if __name__ == '__main__':
     }
     # agent = CarRacingTD3Agent(config)
     
-    rand_agent = RandomAgent(
-        action_space=gym.spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32))
+    rand_agent = RandomAgent()
 
-    train(rand_agent)
+    rand_agent.train()
