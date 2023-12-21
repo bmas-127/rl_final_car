@@ -98,7 +98,7 @@ class TD3BaseAgent(ABC):
     def train(self):
         for episode in range(self.total_episode):
             total_reward = 0
-            state, infos = env.reset()
+            state, infos = self.env.reset()
             self.noise.reset()
             for t in range(10000):
                 if self.total_time_step < self.warmup_steps:
@@ -108,7 +108,7 @@ class TD3BaseAgent(ABC):
                     sigma = max(0.1*(1-episode/self.total_episode), 0.01)
                     action = self.decide_agent_actions(state, sigma=sigma)
 
-                next_state, reward, terminates, truncates, _ = env.step(action)
+                next_state, reward, terminates, truncates, _ = self.env.set_action(action)
                 self.replay_buffer.append(state, action, [reward/10], next_state, [int(terminates)])
                 if self.total_time_step >= self.warmup_steps:
                     self.update()

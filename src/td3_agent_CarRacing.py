@@ -7,10 +7,21 @@ import random
 from src.base_agent import OUNoiseGenerator, GaussianNoise
 from racecar_gym.env import RaceEnv
 import gymnasium as gym
+from src.environment_wrapper.Env import Env
 
 class CarRacingTD3Agent(TD3BaseAgent):
     def __init__(self, config):
         super(CarRacingTD3Agent, self).__init__(config)
+        self.scenario = config["scenario"]
+        self.env = Env(scenario=self.scenario,
+            render_mode='rgb_array_birds_eye',
+            reset_when_collision=True if 'austria' in self.scenario else False,
+            output_freq=config["output_freq"])
+        
+        self.test_env = Env(scenario=self.scenario,
+            render_mode='rgb_array_birds_eye',
+            reset_when_collision=True if 'austria' in self.scenario else False,
+            output_freq=config["output_freq"])
     
         # initialize environment
         self.observation_space = 128

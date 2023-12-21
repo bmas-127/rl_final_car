@@ -4,7 +4,6 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from src.td3_agent_CarRacing import CarRacingTD3Agent
 
 import cv2
 import numpy as np
@@ -21,13 +20,13 @@ import gymnasium as gym
 class Env():
     def __init__(self, scenario, render_mode, reset_when_collision, output_freq):
         self.MAX_ACCU_TIME = -1
-        self.output_freq = config["output_freq"]
+        self.output_freq = output_freq
         
         self.env = RaceEnv(scenario=scenario,
                   render_mode=render_mode,
                   reset_when_collision=True if 'austria' in scenario else False)
         
-        scenario = config["scenario"]
+        scenario = scenario
         if 'austria' in scenario:
             self.MAX_ACCU_TIME = 900
         else:
@@ -44,7 +43,7 @@ class Env():
         
         return obs, info
     
-    def get_img_views(self, obs, info):
+    def record_frames(self, obs, info):
         progress = info['progress']
         lap = int(info['lap'])
         score = lap + progress - 1.
@@ -79,7 +78,7 @@ class Env():
 
         img = np.asarray(img)
 
-        return img
+        self.images.append(img)
 
 
     def record_video(self, filename: str):
@@ -91,6 +90,7 @@ class Env():
             video.write(image)
         cv2.destroyAllWindows()
         video.release()
+        
 
 
 
@@ -98,15 +98,28 @@ class Env():
         self.step += 1
         obs, reward, terminal, trunc, info = self.env.step(action)
 
-        self.output_info(info, obs)
-        print(reward)
+        # self.output_info(info)
+        col = 0
+        if info.get('n_collision') is not None:
+            print( f'Collision: {info["n_collision"]} ')
+        print(info['collision_penalties'])
+        
+        # print(reward)
+        
+        
+        # plt.imshow(obs.transpose(1, 2, 0))
+        # plt.show()
 
-        if terminal:
-            self.output_video(info)
+        # if self.step % self.output_freq == 0:
+        #     self.record_frames(obs, info)
+            
+
+        # if terminal:
+        #     self.output_video(info)
 
         return obs, reward, terminal, trunc, info
 
-    def output_info(self, info, obs):        
+    def output_info(self, info):        
         progress = info['progress']
         print(info["progress"])
         lap = int(info['lap'])
@@ -126,14 +139,6 @@ class Env():
 
         print(print_info)
 
-        # plt.imshow(obs.transpose(1, 2, 0))
-        # plt.show()
-
-        if self.step % self.output_freq == 0:
-            img = self.get_img_views(obs, info)
-            # plt.imshow(img)
-            # plt.show()
-            self.images.append(img)
     
     def output_video(self, info):
         # if round(accu_time) > self.MAX_ACCU_TIME:
@@ -173,8 +178,7 @@ class RandomAgent:
             # Decide an action based on the observation (Replace this with your RL agent logic)
             # action_to_take = agent.decide_agent_actions(obs)  # Replace with actual action
             action_to_take = self.act(obs)
-            print(action_to_take.shape)
-            print(action_to_take)
+            
             # Send an action and receive new observation, reward, and done status
             obs, reward, terminal, trunc, info = self.env.set_action(action_to_take)
 
