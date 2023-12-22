@@ -38,7 +38,7 @@ class Env():
     def reset(self):
         obs, info = self.env.reset()
         self.images = []
-        self.step = 0
+        self.envstep = 0
         self.accu_time = 0
         
         return obs, info
@@ -94,28 +94,27 @@ class Env():
 
 
 
-    def set_action(self, action):
-        self.step += 1
+    def step(self, action):
+        self.envstep += 1
         obs, reward, terminal, trunc, info = self.env.step(action)
+        
+        
+        # Todo
+        # reward function need to be completed
 
-        # self.output_info(info)
+        self.output_info(info)
         col = 0
         if info.get('n_collision') is not None:
             print( f'Collision: {info["n_collision"]} ')
         print(info['collision_penalties'])
         
-        # print(reward)
-        
-        
-        # plt.imshow(obs.transpose(1, 2, 0))
-        # plt.show()
+        print(reward)
 
-        # if self.step % self.output_freq == 0:
-        #     self.record_frames(obs, info)
+        if self.envstep % self.output_freq == 0:
+            self.record_frames(obs, info)
             
-
-        # if terminal:
-        #     self.output_video(info)
+        if terminal:
+            self.output_video(info)
 
         return obs, reward, terminal, trunc, info
 
@@ -127,7 +126,7 @@ class Env():
         env_time = info['time']
 
         # Print information
-        print_info = f'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Step: {self.step} Lap: {info["lap"]}, ' \
+        print_info = f'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Step: {self.envstep} Lap: {info["lap"]}, ' \
                         f'Progress: {info["progress"]:.3f}, ' \
                         f'EnvTime: {info["time"]:.3f} ' 
         if info.get('n_collision') is not None:
@@ -180,7 +179,7 @@ class RandomAgent:
             action_to_take = self.act(obs)
             
             # Send an action and receive new observation, reward, and done status
-            obs, reward, terminal, trunc, info = self.env.set_action(action_to_take)
+            obs, reward, terminal, trunc, info = self.env.step(action_to_take)
 
 
             if terminal:
