@@ -109,7 +109,6 @@ class CarRacingTD3Agent(TD3BaseAgent):
             # Adding noise and ensuring the action + noise is still within the valid action space
             a_next = a_next + noise 
             a_next[0, 0] = np.clip(a_next[0, 0], -1.0, 1.0)  # First action: -1 to +1
-            action[0, 1] = np.clip(action[0, 1], -1.0, 1.0)   
             
             a_next = torch.from_numpy(a_next).float().to(self.device)
 

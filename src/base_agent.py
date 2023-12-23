@@ -136,10 +136,10 @@ class TD3BaseAgent(ABC):
         all_rewards = []
         for episode in range(self.eval_episode):
             total_reward = 0
-            state, infos = test_env.reset()
+            state, infos = self.test_env.reset()
             for t in range(10000):
                 action = self.decide_agent_actions(state)
-                next_state, reward, terminates, truncates, _ = test_env.step(action)
+                next_state, reward, terminates, truncates, _ = self.test_env.step(action)
                 total_reward += reward
                 state = next_state
                 if terminates or truncates:

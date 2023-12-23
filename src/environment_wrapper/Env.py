@@ -17,7 +17,7 @@ import gymnasium as gym
 # ****************************
 # accu_time needed to be added
 # ****************************
-class Env():
+class Env:
     def __init__(self, scenario, render_mode, reset_when_collision, output_freq):
         self.MAX_ACCU_TIME = -1
         self.output_freq = output_freq
@@ -32,7 +32,6 @@ class Env():
         else:
             self.MAX_ACCU_TIME = 600
             
-        self.reset()
         self.output_freq = output_freq
         
     def reset(self):
@@ -102,13 +101,15 @@ class Env():
         # Todo
         # reward function need to be completed
 
-        self.output_info(info)
-        col = 0
-        if info.get('n_collision') is not None:
-            print( f'Collision: {info["n_collision"]} ')
-        print(info['collision_penalties'])
+        # self.output_info(info)
+        # print(action[0])
+        reward += action[0]
+        # col = 0
+        # if info.get('n_collision') is not None:
+        #     print( f'Collision: {info["n_collision"]} ')
+        # print(info['collision_penalties'])
         
-        print(reward)
+        # print(reward)
 
         if self.envstep % self.output_freq == 0:
             self.record_frames(obs, info)
@@ -149,8 +150,6 @@ class Env():
         print(f'============ Terminal ============')
         print(f'Video saved to {video_name}!')
         print(f'===================================')
-
-
 
 
 class RandomAgent:
