@@ -146,8 +146,8 @@ class TD3BaseAgent(ABC):
                 
                 if sky_pixel_count < 3400:
                     modified_reward -= (3400 - sky_pixel_count)/400
-                    if action[1] > 0.18:
-                        modified_reward -= (3400 - sky_pixel_count)/400 * 5
+                    if action[1] > 0.20:
+                        modified_reward -= (3400 - sky_pixel_count)/400
                 if terminates:
                     modified_reward -= sum(x**2 for x in info["velocity"])
                         
