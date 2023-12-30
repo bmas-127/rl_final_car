@@ -1,2 +1,0 @@
-racecar_gym
-tests
