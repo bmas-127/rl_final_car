@@ -45,7 +45,7 @@ class OUNoiseGenerator:
 class TD3BaseAgent(ABC):
     def __init__(self, config):
         self.gpu = config["gpu"]
-        self.device = torch.device("cuda:1" if self.gpu and torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if self.gpu and torch.cuda.is_available() else "cpu")
         # self.device = "cpu"
         self.total_time_step = 0
         self.training_steps = int(config["training_steps"])
