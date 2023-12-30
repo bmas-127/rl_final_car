@@ -107,11 +107,11 @@ class Env:
         
         
         if self.last_ncollision != len(info["collision_penalties"]):
-            reward -= info["collision_penalties"][self.last_ncollision]
+            reward -= (info["collision_penalties"][self.last_ncollision] ** 0.5)
         
         
         self.last_ncollision = len(info["collision_penalties"])
-        velocity = 1.5 * np.linalg.norm(info["velocity"])
+        velocity = 3 * np.linalg.norm(info["velocity"])
         reward += velocity
         
         
@@ -124,10 +124,8 @@ class Env:
             if terminal:
                 self.output_video(info)
         
-        reward *= 100
-            
         
-        return obs, reward, terminal, trunc, info, original_reward, velocity
+        return obs, reward, terminal, trunc, info
 
     def output_info(self, info):        
         progress = info['progress']
@@ -154,7 +152,7 @@ class Env:
         # if round(accu_time) > self.MAX_ACCU_TIME:
         #     print(f'[Time Limit Error] Accu time "{accu_time}" violate the limit {self.MAX_ACCU_TIME} (sec)!')
         cur_time = datetime.now().strftime("%Y%m%d-%H%M%S")
-        video_name = f'results/New_cloning_orireward_{self.total_episode}_acc{round(0)}s_score{(int(info["lap"])+info["progress"]-1):.4f}.mp4'
+        video_name = f'results/5000032_pow0.5_{self.total_episode}_acc{round(0)}s_score{(int(info["lap"])+info["progress"]-1):.4f}.mp4'
         Path(video_name).parent.mkdir(parents=True, exist_ok=True)
         self.record_video(video_name)
         print(f'============ Terminal ============')

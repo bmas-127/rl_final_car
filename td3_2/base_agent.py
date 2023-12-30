@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from src.replay_buffer.replay_buffer import ReplayMemory
 from abc import ABC, abstractmethod
 import gymnasium as gym
-
+import cv2
 
 class GaussianNoise:
     def __init__(self, dim, mu=None, std=None):
@@ -45,7 +45,8 @@ class OUNoiseGenerator:
 class TD3BaseAgent(ABC):
     def __init__(self, config):
         self.gpu = config["gpu"]
-        self.device = torch.device("cuda" if self.gpu and torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:1" if self.gpu and torch.cuda.is_available() else "cpu")
+        # self.device = "cpu"
         self.total_time_step = 0
         self.training_steps = int(config["training_steps"])
         self.batch_size = int(config["batch_size"])
@@ -57,7 +58,11 @@ class TD3BaseAgent(ABC):
         self.tau = config["tau"]
         self.update_freq = config["update_freq"]
         self.action_space = gym.spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32)
-
+       
+        self.num_frames =  int(config["frame_stake_num"])
+        self.resized_dim = int(config["resized_dim"])
+        self.frame_stack = []
+        
         self.replay_buffer = ReplayMemory(int(config["replay_buffer_capacity"]))
         self.writer = SummaryWriter(config["logdir"])
 
@@ -89,6 +94,18 @@ class TD3BaseAgent(ABC):
         return NotImplementedError
 
 
+    def process_frame_stack(self, new_frame):
+        preprocessed_frame = cv2.cvtColor(np.transpose(new_frame, (1, 2, 0)), cv2.COLOR_RGB2GRAY)
+        preprocessed_frame = cv2.resize(preprocessed_frame, (self.resized_dim, self.resized_dim))
+
+        self.frame_stack.append(preprocessed_frame)
+
+        self.frame_stack = self.frame_stack[-self.num_frames:]
+
+        stacked_frames = np.stack(self.frame_stack, axis=0)
+
+        return stacked_frames    
+    
     @staticmethod
     def update_target_network(target_net, net, tau):
         # update target network by "soft" copying from behavior network
@@ -100,25 +117,35 @@ class TD3BaseAgent(ABC):
             total_reward = 0
             state, infos = self.env.reset()
             self.noise.reset()
+
+            preprocessed_frame = cv2.cvtColor(np.transpose(state, (1, 2, 0)), cv2.COLOR_RGB2GRAY)
+            preprocessed_frame = cv2.resize(preprocessed_frame, (self.resized_dim, self.resized_dim))
+            self.frame_stack = [preprocessed_frame] * self.num_frames
+            stacked_frames = self.process_frame_stack(state)
+            
             for t in range(10000):
                 if self.total_time_step < self.warmup_steps:
                     action = [0.5, 0.18] + np.random.normal(loc=0, scale=0.03, size=(2))
 
-
                 else:
                     # exploration degree
                     sigma = max(0.1*(1-episode/self.total_episode), 0.01)
-                    action = self.decide_agent_actions(state, sigma=sigma)
+                    action = self.decide_agent_actions(stacked_frames, sigma=sigma)
                 
                 
                 next_state, reward, terminates, truncates, _ = self.env.step(action)
-                self.replay_buffer.append(state, action, [reward/10], next_state, [int(terminates)])
+                next_stacked_frames = self.process_frame_stack(next_state)
+                
+                
+                self.replay_buffer.append(stacked_frames, action, [reward/10], next_stacked_frames, [int(terminates)])
                 if self.total_time_step >= 200:
                     self.update()
 
                 self.total_time_step += 1
                 total_reward += reward
-                state = next_state
+                stacked_frames = next_stacked_frames
+                
+                
                 if terminates or truncates:
                     self.writer.add_scalar('Train/Episode Reward', total_reward, self.total_time_step)
                     print(
@@ -140,11 +167,24 @@ class TD3BaseAgent(ABC):
         for episode in range(self.eval_episode):
             total_reward = 0
             state, infos = self.env.reset(True)
+            
+            preprocessed_frame = cv2.cvtColor(np.transpose(state, (1, 2, 0)), cv2.COLOR_RGB2GRAY)
+            preprocessed_frame = cv2.resize(preprocessed_frame, (32, 32))
+            self.frame_stack = [preprocessed_frame] * self.num_frames
+            stacked_frames = self.process_frame_stack(state)
+            
+            
             for t in range(10000):
-                action = self.decide_agent_actions(state)
+                action = self.decide_agent_actions(stacked_frames)
                 next_state, reward, terminates, truncates, _ = self.env.step(action)
                 total_reward += reward
-                state = next_state
+                
+                next_stacked_frames = self.process_frame_stack(next_state)
+                
+                
+                stacked_frames = next_stacked_frames
+                
+                
                 if terminates or truncates:
                     print(
                         'Episode: {}\tLength: {:3d}\tTotal reward: {:.2f}'

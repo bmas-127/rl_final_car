@@ -1,17 +1,19 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from src.base_agent import TD3BaseAgent
-from src.models.CarRacing_model import ActorNetSimple, CriticNetSimple
+from td3_2.base_agent import TD3BaseAgent
+from td3_2.models.CarRacing_model import ActorNetSimple, CriticNetSimple
 import random
-from src.base_agent import OUNoiseGenerator, GaussianNoise
+from td3_2.base_agent import OUNoiseGenerator, GaussianNoise
 from racecar_gym.env import RaceEnv
 import gymnasium as gym
-from src.environment_wrapper.Env import Env
+from td3_2.environment_wrapper.Env import Env
 
 class CarRacingTD3Agent(TD3BaseAgent):
     def __init__(self, config):
         super(CarRacingTD3Agent, self).__init__(config)
+        
+        print("here")
         self.scenario = config["scenario"]
         self.env = Env(scenario=self.scenario,
             render_mode='rgb_array_birds_eye',
@@ -24,16 +26,16 @@ class CarRacingTD3Agent(TD3BaseAgent):
             output_freq=config["output_freq"])
     
         # initialize environment
-        self.observation_space = 128
+        self.observation_space = config["resized_dim"]
         self.action_space = 2
         self.action_sample = gym.spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32)
 
         
         # behavior network
         #print("self.env.observation_space.shape[0]:", self.env.observation_space.shape[0])
-        self.actor_net = ActorNetSimple(self.observation_space, self.action_space, 3)
-        self.critic_net1 = CriticNetSimple(self.observation_space, self.action_space, 3)
-        self.critic_net2 = CriticNetSimple(self.observation_space, self.action_space, 3)
+        self.actor_net = ActorNetSimple(self.observation_space, self.action_space, self.num_frames)
+        self.critic_net1 = CriticNetSimple(self.observation_space, self.action_space, self.num_frames)
+        self.critic_net2 = CriticNetSimple(self.observation_space, self.action_space, self.num_frames)
         
         self.actor_net.to(self.device)
         self.critic_net1.to(self.device)
@@ -41,9 +43,9 @@ class CarRacingTD3Agent(TD3BaseAgent):
         
         # --------------------------
         # target network
-        self.target_actor_net = ActorNetSimple(self.observation_space, self.action_space, 3)
-        self.target_critic_net1 = CriticNetSimple(self.observation_space, self.action_space, 3)
-        self.target_critic_net2 = CriticNetSimple(self.observation_space, self.action_space, 3)
+        self.target_actor_net = ActorNetSimple(self.observation_space, self.action_space, self.num_frames)
+        self.target_critic_net1 = CriticNetSimple(self.observation_space, self.action_space, self.num_frames)
+        self.target_critic_net2 = CriticNetSimple(self.observation_space, self.action_space, self.num_frames)
         
         self.target_actor_net.to(self.device)
         self.target_critic_net1.to(self.device)

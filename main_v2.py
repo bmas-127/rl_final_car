@@ -62,21 +62,23 @@ if __name__ == '__main__':
         "gamma": 0.99,
         "tau": 0.005,
         "batch_size": 32,
-        "warmup_steps": 200000,
+        "warmup_steps": 50000,
         "total_episode": 100000,
         "lra": 4.5e-5,
         "lrc": 4.5e-5,
         "replay_buffer_capacity": 5000,
-        "logdir": 'log/CarRacing/new_cloning/',
+        "logdir": 'log/CarRacing/new_frame_stake_3/',
         "update_freq": 3,
-        "eval_interval": 50,
-        "eval_episode": 2,
+        "eval_interval": 10,
+        "eval_episode": 1,
         # "scenario" : "austria_competition",
         "scenario" : "circle_cw_competition_collisionStop", 
-        "output_freq" : 5
+        "output_freq" : 5,
+        "frame_stake_num" : 16,
+        "resized_dim" : 32
     }
     agent = CarRacingTD3Agent(config)
     
     # rand_agent = RandomAgent(config)
 
-    agent.train()
+    agent.train() 
