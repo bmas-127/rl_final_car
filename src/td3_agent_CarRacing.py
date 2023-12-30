@@ -16,12 +16,12 @@ class CarRacingTD3Agent(TD3BaseAgent):
         self.env = Env(scenario=self.scenario,
             render_mode='rgb_array_birds_eye',
             reset_when_collision=True if 'austria' in self.scenario else False,
-            output_freq=config["output_freq"])
+            output_freq=config["output_freq"], video_dir=self.video_dir, verbosity=self.verbosity)
         
         self.test_env = Env(scenario=self.scenario,
             render_mode='rgb_array_birds_eye',
             reset_when_collision=True if 'austria' in self.scenario else False,
-            output_freq=config["output_freq"])
+            output_freq=config["output_freq"], video_dir=self.video_dir, verbosity=self.verbosity)
     
         # initialize environment
         self.observation_space = 128
@@ -31,9 +31,9 @@ class CarRacingTD3Agent(TD3BaseAgent):
         
         # behavior network
         #print("self.env.observation_space.shape[0]:", self.env.observation_space.shape[0])
-        self.actor_net = ActorNetSimple(self.observation_space, self.action_space, 3)
-        self.critic_net1 = CriticNetSimple(self.observation_space, self.action_space, 3)
-        self.critic_net2 = CriticNetSimple(self.observation_space, self.action_space, 3)
+        self.actor_net = ActorNetSimple(self.observation_space, self.action_space, 4)
+        self.critic_net1 = CriticNetSimple(self.observation_space, self.action_space, 4)
+        self.critic_net2 = CriticNetSimple(self.observation_space, self.action_space, 4)
         
         self.actor_net.to(self.device)
         self.critic_net1.to(self.device)
@@ -41,9 +41,9 @@ class CarRacingTD3Agent(TD3BaseAgent):
         
         # --------------------------
         # target network
-        self.target_actor_net = ActorNetSimple(self.observation_space, self.action_space, 3)
-        self.target_critic_net1 = CriticNetSimple(self.observation_space, self.action_space, 3)
-        self.target_critic_net2 = CriticNetSimple(self.observation_space, self.action_space, 3)
+        self.target_actor_net = ActorNetSimple(self.observation_space, self.action_space, 4)
+        self.target_critic_net1 = CriticNetSimple(self.observation_space, self.action_space, 4)
+        self.target_critic_net2 = CriticNetSimple(self.observation_space, self.action_space, 4)
         
         self.target_actor_net.to(self.device)
         self.target_critic_net1.to(self.device)
@@ -65,7 +65,7 @@ class CarRacingTD3Agent(TD3BaseAgent):
         # noise_mean = np.full(self.env.action_space.shape[0], 0.0, np.float32)
         # noise_std = np.full(self.env.action_space.shape[0], 2.0, np.float32)
         # self.noise = OUNoiseGenerator(noise_mean, noise_std)
-        self.noise = GaussianNoise(self.action_space, 0.0, 2.0)
+        self.noise = GaussianNoise(self.action_space, 0.0, 1.0)
 
 
     def decide_agent_actions(self, state, sigma=0.0, brake_rate=0.015): 
@@ -74,10 +74,9 @@ class CarRacingTD3Agent(TD3BaseAgent):
         with torch.no_grad():   
             state = torch.from_numpy(state).float().to(self.device)
             state = state.unsqueeze(0) 
-            print( self.actor_net(state).cpu().data.numpy() )
+
             action = self.actor_net(state).cpu().data.numpy() + sigma * self.noise.generate()
             
-            print(action)
             action[0, 0] = np.clip(action[0, 0], -1.0, 1.0)  
             action[0, 1] = np.clip(action[0, 1], -1.0, 1.0)   
 
@@ -102,14 +101,12 @@ class CarRacingTD3Agent(TD3BaseAgent):
         
         with torch.no_grad():
             # select action a_next from target actor network and add noise for smoothing
-
             a_next = self.target_actor_net(next_state).cpu().data.numpy() 
             noise = self.noise.generate()  # generate Gaussian noise
             
             # Adding noise and ensuring the action + noise is still within the valid action space
             a_next = a_next + noise 
             a_next[0, 0] = np.clip(a_next[0, 0], -1.0, 1.0)  # First action: -1 to +1
-            action[0, 1] = np.clip(action[0, 1], -1.0, 1.0)   
             
             a_next = torch.from_numpy(a_next).float().to(self.device)
 

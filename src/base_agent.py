@@ -8,7 +8,8 @@ from torch.utils.tensorboard import SummaryWriter
 from src.replay_buffer.replay_buffer import ReplayMemory
 from abc import ABC, abstractmethod
 import gymnasium as gym
-
+from PIL import Image, ImageDraw, ImageFont
+import cv2
 
 class GaussianNoise:
     def __init__(self, dim, mu=None, std=None):
@@ -57,9 +58,16 @@ class TD3BaseAgent(ABC):
         self.tau = config["tau"]
         self.update_freq = config["update_freq"]
         self.action_space = gym.spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32)
+        self.result_dir = os.path.join("results", config["spec_name"])
+        self.logdir = os.path.join(self.result_dir, "log")
 
         self.replay_buffer = ReplayMemory(int(config["replay_buffer_capacity"]))
-        self.writer = SummaryWriter(config["logdir"])
+        self.writer = SummaryWriter(self.logdir)
+        self.verbosity = config["verbosity"]
+        self.weight_dir = os.path.join(self.result_dir, "weights")
+        if not os.path.exists(self.weight_dir):
+            os.makedirs(self.weight_dir)
+        self.video_dir = os.path.join(self.result_dir, "videos")
 
     @abstractmethod
     def decide_agent_actions(self, state, sigma=0.0):
@@ -95,39 +103,78 @@ class TD3BaseAgent(ABC):
         for target, behavior in zip(target_net.parameters(), net.parameters()):
             target.data.copy_((1 - tau) * target.data + tau * behavior.data)
 
-    def train(self):
+    def train(self, load_path=None):
+        if load_path:
+            self.load(load_path)
         for episode in range(self.total_episode):
+            print(f'Episode: {episode+1}')
             total_reward = 0
+            total_modified_reward = 0
             state, infos = self.env.reset()
             self.noise.reset()
             for t in range(10000):
                 if self.total_time_step < self.warmup_steps:
-                    action = self.action_sample.sample()
+                    # action = self.action_sample.sample()
+                    action = [0.4, 0.17]  + self.noise.generate()/10
                 else:
                     # exploration degree
                     sigma = max(0.1*(1-episode/self.total_episode), 0.01)
                     action = self.decide_agent_actions(state, sigma=sigma)
 
-                next_state, reward, terminates, truncates, _ = self.env.step(action)
-                self.replay_buffer.append(state, action, [reward/10], next_state, [int(terminates)])
-                if self.total_time_step >= self.warmup_steps:
+                next_state, reward, terminates, truncates, info, sky_pixel_count = self.env.step(action, record=False)
+                
+                # reward shaping ========================================================================
+                modified_reward = reward
+                # if episode < 70:
+                #     if action[0] < 0.3 and sum(x**2 for x in info["velocity"]) < 1:
+                #         modified_reward -= 1
+                #     # if sum(x**2 for x in info["velocity"]) < 0.1:
+                #     #     modified_reward -= 0.01
+                #     if action[0] > 0.7 or abs(action[1]) > 0.3:
+                #         modified_reward -= 1
+                #     if action[1] < -0.2:
+                #         modified_reward -= 1
+                #     if abs(action[0] - 0.5) < 0.15 and abs(action[1] - 0.18) < 0.05:
+                #         modified_reward += 1
+                    
+                   
+                # else:
+                #     modified_reward += 1000*reward
+                modified_reward += 1000*reward
+                
+                modified_reward += sum(x**2 for x in info["velocity"]) * 0.01
+                
+                if sky_pixel_count < 3400:
+                    modified_reward -= (3400 - sky_pixel_count)/400
+                    if action[1] > 0.18:
+                        modified_reward -= (3400 - sky_pixel_count)/400 * 5
+                if terminates:
+                    modified_reward -= sum(x**2 for x in info["velocity"])
+                        
+                self.replay_buffer.append(state, action, [modified_reward/10], next_state, [int(terminates)])    
+
+                # if self.total_time_step >= self.warmup_steps:
+                if self.total_time_step >= 1000:
                     self.update()
 
                 self.total_time_step += 1
                 total_reward += reward
+                total_modified_reward += modified_reward
+                
                 state = next_state
                 if terminates or truncates:
                     self.writer.add_scalar('Train/Episode Reward', total_reward, self.total_time_step)
                     print(
-                        'Step: {}\tEpisode: {}\tLength: {:3d}\tTotal reward: {:.2f}'
-                        .format(self.total_time_step, episode+1, t, total_reward))
+                        'Step: {}\tEpisode: {}\tLength: {:3d}\tTotal reward: {:.2f}\tModified reward: {:.2f}'
+                        .format(self.total_time_step, episode+1, t, total_reward, total_modified_reward))
 
                     break
 
             if (episode+1) % self.eval_interval == 0:
                 # save model checkpoint
+                self.info_log("evaluation")
                 avg_score = self.evaluate()
-                self.save(os.path.join(self.writer.log_dir, f"model_{self.total_time_step}_{int(avg_score)}.pth"))
+                self.save(os.path.join(self.weight_dir, f"model_{self.total_time_step}_{int(avg_score)}.pth"))
                 self.writer.add_scalar('Evaluate/Episode Reward', avg_score, self.total_time_step)
 
     def evaluate(self):
@@ -136,15 +183,15 @@ class TD3BaseAgent(ABC):
         all_rewards = []
         for episode in range(self.eval_episode):
             total_reward = 0
-            state, infos = test_env.reset()
+            state, infos = self.env.reset()
             for t in range(10000):
                 action = self.decide_agent_actions(state)
-                next_state, reward, terminates, truncates, _ = test_env.step(action)
+                next_state, reward, terminates, truncates, _, _ = self.env.step(action, test=True, record=True)
                 total_reward += reward
                 state = next_state
                 if terminates or truncates:
                     print(
-                        'Episode: {}\tLength: {:3d}\tTotal reward: {:.2f}'
+                        'Evaluating episode: {}\tLength: {:3d}\tTotal reward: {:.2f}'
                         .format(episode+1, t, total_reward))
                     all_rewards.append(total_reward)
                     break
@@ -175,3 +222,6 @@ class TD3BaseAgent(ABC):
         self.load(load_path)
         self.evaluate()
 
+    def info_log(self, log: str):
+        if self.verbosity:
+            print(f'[\033[96mINFO\033[0m] \033[94m{log}\033[0m', flush=True)

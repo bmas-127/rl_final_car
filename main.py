@@ -61,21 +61,26 @@ if __name__ == '__main__':
         "training_steps": 1e8,
         "gamma": 0.99,
         "tau": 0.005,
-        "batch_size": 32,
-        "warmup_steps": 1000,
+        "batch_size": 128,
+        # "warmup_steps": 1000,
+        "warmup_steps": 500,
         "total_episode": 100000,
         "lra": 4.5e-5,
         "lrc": 4.5e-5,
         "replay_buffer_capacity": 5000,
-        "logdir": 'log/CarRacing/td3_test_variance_3/',
+        # "logdir": 'log/CarRacing/td3_test_variance_3/',
         "update_freq": 3,
         "eval_interval": 10,
-        "eval_episode": 10,
-        "scenario" : "austria_competition",
-        "output_freq" : 5
+        "eval_episode": 1,
+        # "scenario" : "austria_competition",
+        "scenario" : "circle_cw_competition_collisionStop",
+        "output_freq" : 5,
+        "spec_name": 'test',
+        "verbosity" : False,
     }
     agent = CarRacingTD3Agent(config)
     
     # rand_agent = RandomAgent(config)
-
-    agent.train()
+    # agent.train()
+    agent.train('/work/u7938613/mathew/TWCC/RL/rl_final_car/results/test_frame_no_sky/weights/model_46716_0.pth')
+    # agent.load_and_evaluate('/work/u7938613/mathew/TWCC/RL/rl_final_car/results/test_frame_no_sky/weights/model_46716_0.pth')
