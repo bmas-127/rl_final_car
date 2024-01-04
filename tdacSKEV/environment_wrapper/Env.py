@@ -13,6 +13,8 @@ from PIL import Image, ImageDraw, ImageFont
 from racecar_gym.env import RaceEnv
 import gymnasium as gym
 
+import glob
+
 
 
 # ****************************
@@ -120,6 +122,8 @@ class Env:
         velocity = (np.linalg.norm(info["velocity"]) ** 0.8) * 5
         reward += velocity
     
+    
+        self.test = False
         # Todo
         if self.test == True:
             if self.envstep % self.output_freq == 0:

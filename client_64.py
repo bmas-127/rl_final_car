@@ -32,8 +32,8 @@ def connect(agent, url: str = 'http://localhost:5000'):
         # Decide an action based on the observation (Replace this with your RL agent logic)
         action_to_take = np.array([0.0, 0.0])
         if first == True:
-            agent.load("circle_master.pth")
-            # agent.load("log/CarRacing/circle_w60000_lowvar_freq2_Gaussian_halfT_1e-05_T32S32_version1/model_129417_1.6449880668257755.pth")
+            agent.load("circle_master64.pth")
+            
             action_to_take = agent.init_env(obs)
             first = False
         else:
@@ -84,7 +84,7 @@ if __name__ == '__main__':
         "scenario" : "circle_cw_competition_collisionStop", 
         "output_freq" : 5,
         "frame_stake_num" : 16,
-        "resized_dim" : 32,
+        "resized_dim" : 64,
         "update_loop_num" : 10
     }
     agent = CarRacingTD3Agent(config)

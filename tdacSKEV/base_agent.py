@@ -334,3 +334,8 @@ class TD3BaseAgent(ABC):
         self.load(load_path)
         self.evaluate()
 
+    # load model
+    def load_64(self, load_path):
+        # checkpoint = torch.load(load_path, map_location=torch.device('cpu'))
+        checkpoint = torch.load(load_path)
+        self.actor_net.load_state_dict(checkpoint['actor'])
