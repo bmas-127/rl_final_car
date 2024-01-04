@@ -126,10 +126,9 @@ class Env:
         
         reward += velocity
         
-        # self.test = True
         
-        if self.logdir.split("_")[0] == "n":
-            self.test = False
+        # if self.logdir.split("_")[0] == "n":
+        #     self.test = False
         
         # Todo
         if self.test == True:

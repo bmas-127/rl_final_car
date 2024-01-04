@@ -36,10 +36,12 @@ class CarRacingTD3Agent(TD3BaseAgent):
         # behavior network
         #print("self.env.observation_space.shape[0]:", self.env.observation_space.shape[0])
         self.actor_net = ActorNetSimple(self.observation_space, self.action_space, self.feature_space, self.num_frames)
+        self.demo_net = ActorNetSimple(self.observation_space, self.action_space, self.feature_space, self.num_frames)
         self.critic_net1 = CriticNetSimple(self.observation_space, self.action_space, self.feature_space, self.num_frames)
         self.critic_net2 = CriticNetSimple(self.observation_space, self.action_space, self.feature_space, self.num_frames)
         
         self.actor_net.to(self.device)
+        self.demo_net.to(self.device)
         self.critic_net1.to(self.device)
         self.critic_net2.to(self.device)
         
@@ -88,8 +90,8 @@ class CarRacingTD3Agent(TD3BaseAgent):
             action = action[0] 
         
         return action
+    
 
-        
 
     def update_behavior_network(self):
         # sample a minibatch of transitions

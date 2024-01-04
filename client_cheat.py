@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from tdacSKEV.td3_agent_CarRacing import CarRacingTD3Agent
+from td7_0.td3_agent_CarRacing import CarRacingTD3Agent
 
 import cv2
 import numpy as np
@@ -32,7 +32,7 @@ def connect(agent, url: str = 'http://localhost:5000'):
         # Decide an action based on the observation (Replace this with your RL agent logic)
         action_to_take = np.array([0.0, 0.0])
         if first == True:
-            agent.load("model_49097_1.4826968973747015.pth")
+            agent.load("/work/u7938613/mathew/TWCC/RL/rl_final_car_velocity/log/CarRacing/austria_ori_teacherforce2stage_dir0.2_lowvar_keeptraining_1/top30/model_1254446_2.782882315921964.pth")
             action_to_take = agent.init_env(obs)
             first = False
         else:
@@ -77,10 +77,10 @@ if __name__ == '__main__':
         "logdir": 'log/DuckRacing/model_acstack_3step4_8w_0.95r_1e_4_from_scratch_v3/',
         # "logdir": 'log/CarRacing/austria_competition/',
         "update_freq": 3,
-        "eval_interval": 10,
-        "eval_episode": 2,
-        # "scenario" : "austria_competition",
-        "scenario" : "circle_cw_competition_collisionStop", 
+        "eval_interval": 30,
+        "eval_episode": 3,
+        "scenario" : "austria_competition",
+        # "scenario" : "circle_cw_competition_collisionStop", 
         "output_freq" : 5,
         "frame_stake_num" : 16,
         "resized_dim" : 32,

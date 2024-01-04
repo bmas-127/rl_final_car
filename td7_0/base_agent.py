@@ -65,6 +65,7 @@ class TD3BaseAgent(ABC):
         self.resized_dim = int(config["resized_dim"])
         self.frame_stack = []
         self.velocity_stack = []
+        self.first = True
         
         self.replay_buffer = ReplayMemory(int(config["replay_buffer_capacity"]))
         self.writer = SummaryWriter(config["logdir"])
@@ -76,6 +77,22 @@ class TD3BaseAgent(ABC):
 
         return NotImplementedError
 
+    def demo_actions(self, state, velocity, sigma=0.0, brake_rate=0.015): 
+        ### TODO ###
+        
+        with torch.no_grad():   
+            state = torch.from_numpy(state).float().to(self.device)
+            velocity = torch.from_numpy(velocity).float().to(self.device)
+            state = state.unsqueeze(0) 
+            velocity = velocity.unsqueeze(0)
+            
+            action = self.demo_net(state, velocity).cpu().data.numpy() + sigma * self.noise.generate()
+            action[0, 0] = np.clip(action[0, 0], -1.0, 1.0)  
+            action[0, 1] = np.clip(action[0, 1], -1.0, 1.0)   
+
+            action = action[0] 
+        
+        return action
 
     def update(self):
         # update the behavior networks
@@ -138,13 +155,13 @@ class TD3BaseAgent(ABC):
             stacked_velocity = self.process_velocity_stack([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             
             local_step = 0
-            for t in range(100000):
+            for t in range(10000):
                 local_step += 1
                 if self.total_time_step < self.warmup_steps:
-                    # action = [0.8, 0] + np.random.normal(loc=0, scale=0.3, size=(2))
-                    action = self.decide_agent_actions(stacked_frames, stacked_velocity)
-                    # action = [0.8, 0]
-
+                    sigma = max(0.1*(1-episode/self.total_episode), 0.01)
+                    action = self.demo_actions(stacked_frames, stacked_velocity, sigma)
+                    if t > 450:
+                        action = [0.1, 0.5] + np.random.normal(loc=0, scale=0.3, size=(2))
                 else:
                     # exploration degree
                     sigma = max(0.1*(1-episode/self.total_episode), 0.01)
@@ -180,6 +197,36 @@ class TD3BaseAgent(ABC):
                 self.save(os.path.join(self.writer.log_dir, f"model_{self.total_time_step}_{int(avg_score)}.pth"))
                 self.writer.add_scalar('Evaluate/Episode Reward', avg_score, self.total_time_step)
 
+    def init_env(self, obs):
+        state, infos = self.env.reset(True)
+        
+        preprocessed_frame = cv2.cvtColor(np.transpose(obs, (1, 2, 0)), cv2.COLOR_RGB2GRAY)
+        preprocessed_frame = cv2.resize(preprocessed_frame, (32, 32))
+        self.frame_stack = [preprocessed_frame] * self.num_frames
+  
+        
+        self.velocity_stack = [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]] * self.num_frames
+        
+        
+        self.stacked_frames =  self.process_frame_stack(obs)           
+        self.stacked_velocity = self.process_velocity_stack([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        
+        return np.array([0.0, 0.0])
+        
+    def act(self, obs):
+            self.stacked_frames = self.process_frame_stack(obs)
+            
+            action = self.decide_agent_actions(self.stacked_frames, self.stacked_velocity)
+            next_state, reward, terminates, truncates, info, original_reward = self.env.step(action)
+
+            self.stacked_velocity = self.process_velocity_stack(info["velocity"])
+
+
+
+            return action
+            
+
+    
     def evaluate(self):
         print("==============================================")
         print("Evaluating...")
@@ -217,9 +264,10 @@ class TD3BaseAgent(ABC):
         return avg
     
     def load_and_train(self, load_path):
-        self.load(load_path)
+        checkpoint = torch.load(load_path)
+        self.demo_net.load_state_dict(checkpoint['actor'])
         self.train()
-
+        
     # save model
     def save(self, save_path):
         torch.save(
