@@ -54,7 +54,7 @@ def connect(agent, url: str = 'http://localhost:5000'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--url', type=str, default='http://localhost:5000', help='The url of the server.')
+    parser.add_argument('--url', type=str, default='http://localhost:7000', help='The url of the server.')
     args = parser.parse_args()
 
 
@@ -93,4 +93,4 @@ if __name__ == '__main__':
     # agent.train()
     # agent.load_and_train("model_austria.pth")
     # agent.load_and_train("model_static.pth")
-    connect(agent, url="http://127.0.0.1:6000")
+    connect(agent, url="http://127.0.0.1:7000")
